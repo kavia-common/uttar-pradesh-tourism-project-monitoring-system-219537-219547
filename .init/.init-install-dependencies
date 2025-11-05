@@ -1,0 +1,4 @@
+{
+    "command": "cd db_visualizer && npm install",
+    "working_directory": "/home/kavia/workspace/code-generation/uttar-pradesh-tourism-project-monitoring-system-219537-219547/upstdc_database"
+}

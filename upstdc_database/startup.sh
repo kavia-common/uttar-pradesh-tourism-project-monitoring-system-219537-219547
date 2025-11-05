@@ -1,143 +1,126 @@
 #!/bin/bash
 
-# MongoDB startup script following the same pattern
-DB_NAME="myapp"
-DB_USER="appuser"
-DB_PASSWORD="dbuser123"
-DB_PORT="5000"
+# MongoDB startup and initialization script for UPSTDC PMS
+# Applies JSON schema validation, indexes, and seed data idempotently.
 
-echo "Starting MongoDB setup..."
+# ENV with defaults (can be overridden by .env or environment)
+DB_NAME="${MONGODB_DB:-myapp}"
+DB_USER="${MONGODB_ADMIN_USER:-appuser}"
+DB_PASSWORD="${MONGODB_ADMIN_PASSWORD:-dbuser123}"
+DB_PORT="${MONGODB_PORT:-5000}"
 
-# Check if MongoDB is already running
+echo "=== UPSTDC MongoDB setup start ==="
+echo "Target DB: ${DB_NAME} on port ${DB_PORT}"
+
+# If MongoDB already running on desired port, skip starting but proceed to schema/index/seed
 if mongosh --port ${DB_PORT} --eval "db.adminCommand('ping')" > /dev/null 2>&1; then
-    echo "MongoDB is already running on port ${DB_PORT}!"
-    
-    # Try to verify the database exists and user can connect
-    if mongosh mongodb://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?authSource=admin --eval "db.getName()" > /dev/null 2>&1; then
-        echo "Database ${DB_NAME} is accessible with user ${DB_USER}."
-    else
-        echo "MongoDB is running but authentication might not be configured."
-    fi
-    
-    echo ""
-    echo "Database: ${DB_NAME}"
-    echo "Admin user: ${DB_USER} (password: ${DB_PASSWORD})"
-    echo "App user: appuser (password: ${DB_PASSWORD})"
-    echo "Port: ${DB_PORT}"
-    echo ""
-    
-    # Check if connection info file exists
-    if [ -f "db_connection.txt" ]; then
-        echo "To connect to the database, use:"
-        echo "$(cat db_connection.txt)"
-    else
-        echo "To connect to the database, use:"
-        echo "mongosh mongodb://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?authSource=admin"
-    fi
-    
-    echo ""
-    echo "Script stopped - MongoDB server already running."
-    exit 0
-fi
-
-# Check if MongoDB is running on a different port
-if pgrep -x mongod > /dev/null; then
-    # Get the port of the running MongoDB instance
-    MONGO_PID=$(pgrep -x mongod)
-    CURRENT_PORT=$(sudo lsof -Pan -p $MONGO_PID -i | grep -o ":[0-9]*" | grep -o "[0-9]*" | head -1)
-    
-    if [ "$CURRENT_PORT" = "${DB_PORT}" ]; then
-        echo "MongoDB is already running on port ${DB_PORT}!"
-        echo "Script stopped - server already running."
-        exit 0
-    else
-        echo "MongoDB is running on different port ($CURRENT_PORT), stopping it..."
-        sudo pkill -x mongod
-        sleep 2
-    fi
-fi
-
-# Clean up any existing socket files
-sudo rm -f /tmp/mongodb-*.sock 2>/dev/null
-
-# Start MongoDB server without authentication initially using nohup
-echo "Starting MongoDB server..."
-nohup sudo mongod --dbpath /var/lib/mongodb --port ${DB_PORT} --bind_ip 127.0.0.1 --unixSocketPrefix /var/run/mongodb > /var/lib/mongodb/mongod.log 2>&1 &
-
-# Wait for MongoDB to start
-echo "Waiting for MongoDB to start..."
-sleep 5
-
-# Check if MongoDB is running
-for i in {1..15}; do
-    if mongosh --port ${DB_PORT} --eval "db.adminCommand('ping')" > /dev/null 2>&1; then
-        echo "MongoDB is ready!"
-        break
-    fi
-    echo "Waiting... ($i/15)"
+  echo "MongoDB is already running on port ${DB_PORT}"
+else
+  # If mongod is running on another port, stop it (best effort)
+  if pgrep -x mongod > /dev/null; then
+    echo "Detected mongod running on different port, attempting to stop..."
+    sudo pkill -x mongod || true
     sleep 2
-done
+  fi
 
-# Create database and user
-echo "Setting up database and user..."
-mongosh --port ${DB_PORT} << EOF
-// Switch to admin database for user creation
-use admin
+  # Clean up sockets
+  sudo rm -f /tmp/mongodb-*.sock 2>/dev/null
 
-// Create admin user if it doesn't exist
-if (db.getUser("${DB_USER}") == null) {
-    db.createUser({
-        user: "${DB_USER}",
-        pwd: "${DB_PASSWORD}",
-        roles: [
-            { role: "userAdminAnyDatabase", db: "admin" },
-            { role: "readWriteAnyDatabase", db: "admin" }
-        ]
-    });
-}
+  echo "Starting MongoDB server on port ${DB_PORT}..."
+  nohup sudo mongod --dbpath /var/lib/mongodb --port ${DB_PORT} --bind_ip 127.0.0.1 --unixSocketPrefix /var/run/mongodb > /var/lib/mongodb/mongod.log 2>&1 &
+  echo "Waiting for MongoDB to start..."
+  for i in {1..20}; do
+    if mongosh --port ${DB_PORT} --eval "db.adminCommand('ping')" > /dev/null 2>&1; then
+      echo "MongoDB is ready!"
+      break
+    fi
+    sleep 1
+  done
+fi
 
-// Switch to target database
-use ${DB_NAME}
-
-// Create application user for specific database
-if (db.getUser("appuser") == null) {
-    db.createUser({
-        user: "appuser",
-        pwd: "${DB_PASSWORD}",
-        roles: [
-            { role: "readWrite", db: "${DB_NAME}" }
-        ]
-    });
-}
-
-print("MongoDB setup complete!");
+# Create admin and app user idempotently
+echo "Ensuring admin and app users exist..."
+mongosh --port ${DB_PORT} << 'EOF'
+const adminUser = Deno ? null : null; // placeholder to keep syntax highlighters calm
 EOF
 
-# Save connection command to a file
-echo "mongosh mongodb://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?authSource=admin" > db_connection.txt
-echo "Connection string saved to db_connection.txt"
+mongosh --port ${DB_PORT} << EOF
+use admin
+if (db.getUser("${DB_USER}") == null) {
+  db.createUser({
+    user: "${DB_USER}",
+    pwd: "${DB_PASSWORD}",
+    roles: [
+      { role: "userAdminAnyDatabase", db: "admin" },
+      { role: "readWriteAnyDatabase", db: "admin" }
+    ]
+  });
+  print("✓ Admin user created");
+} else {
+  print("• Admin user exists");
+}
 
-# Save environment variables to a file
+use ${DB_NAME}
+if (db.getUser("appuser") == null) {
+  db.createUser({
+    user: "appuser",
+    pwd: "${DB_PASSWORD}",
+    roles: [ { role: "readWrite", db: "${DB_NAME}" } ]
+  });
+  print("✓ App user created");
+} else {
+  print("• App user exists");
+}
+EOF
+
+# Apply JSON Schema validations for collections
+echo "Applying collection validators (JSON Schema)..."
+mongosh --port ${DB_PORT} ${DB_NAME} << 'EOF'
+function applyValidator(collName, validator, options = {}) {
+  try {
+    const cmd = { collMod: collName, validator: { $jsonSchema: validator }, validationLevel: (options.validatorLevel || "moderate") };
+    // If collection doesn't exist yet, create with validator
+    const exists = db.getCollectionNames().includes(collName);
+    if (!exists) {
+      db.createCollection(collName, { validator: { $jsonSchema: validator }, validationLevel: (options.validatorLevel || "moderate") });
+      print("✓ Created collection with validator: " + collName);
+    } else {
+      db.runCommand(cmd);
+      print("✓ Updated validator for: " + collName);
+    }
+  } catch (e) {
+    print("✗ Validator error for " + collName + ": " + e.message);
+  }
+}
+
+const spec = JSON.parse(cat("schema/collections.json"));
+const entries = Object.entries(spec.collections || {});
+for (const [name, def] of entries) {
+  applyValidator(name, def.validator, def.options || {});
+}
+print("Validators applied");
+EOF
+
+# Apply indexes
+echo "Applying indexes..."
+mongosh --port ${DB_PORT} ${DB_NAME} schema/indexes.js
+
+# Seed data
+echo "Seeding data..."
+mongosh --port ${DB_PORT} ${DB_NAME} seed/seed_data.js
+
+# Output connection helpers
+echo "mongosh mongodb://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?authSource=admin" > db_connection.txt
 cat > db_visualizer/mongodb.env << EOF
 export MONGODB_URL="mongodb://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/?authSource=admin"
 export MONGODB_DB="${DB_NAME}"
 EOF
 
-echo "MongoDB setup complete!"
-echo "Database: ${DB_NAME}"
-echo "Admin user: ${DB_USER} (password: ${DB_PASSWORD})"
-echo "App user: appuser (password: ${DB_PASSWORD})"
-echo "Port: ${DB_PORT}"
-echo ""
-
+echo "Connection string saved to db_connection.txt"
 echo "Environment variables saved to db_visualizer/mongodb.env"
-echo "To use with Node.js viewer, run: source db_visualizer/mongodb.env"
 
-echo "To connect to the database, use one of the following commands:"
-echo "mongosh -u ${DB_USER} -p ${DB_PASSWORD} --port ${DB_PORT} --authenticationDatabase admin ${DB_NAME}"
-echo "$(cat db_connection.txt)"
-
-# MongoDB continues running in background
-echo ""
-echo "MongoDB is running in the background."
-echo "You can now start your application."
+echo "=== UPSTDC MongoDB setup complete ==="
+echo "DB: ${DB_NAME} | Port: ${DB_PORT}"
+echo "Admin user: ${DB_USER} / ${DB_PASSWORD}"
+echo "App user: appuser / ${DB_PASSWORD}"
+echo "Use: source db_visualizer/mongodb.env && curl http://localhost:3000/api/mongodb/tables"

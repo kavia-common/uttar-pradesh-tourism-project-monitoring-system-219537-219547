@@ -1,0 +1,276 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "collections": {
+    "roles": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["name", "permissions", "created_at"],
+        "properties": {
+          "name": { "bsonType": "string", "description": "Unique role name" },
+          "description": { "bsonType": ["string", "null"] },
+          "permissions": {
+            "bsonType": "array",
+            "items": { "bsonType": "string" },
+            "description": "List of permission strings like users:read, projects:write"
+          },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "users": {
+      "options": { "validatorLevel": "strict" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["email", "password_hash", "full_name", "status", "roles", "created_at"],
+        "properties": {
+          "email": { "bsonType": "string", "pattern": "^.+@.+\\..+$", "description": "Unique user email" },
+          "password_hash": { "bsonType": "string" },
+          "full_name": { "bsonType": "string" },
+          "phone": { "bsonType": ["string", "null"] },
+          "status": { "enum": ["active", "inactive", "suspended"] },
+          "roles": {
+            "bsonType": "array",
+            "items": { "bsonType": "objectId" },
+            "description": "References roles._id"
+          },
+          "last_login_at": { "bsonType": ["date", "null"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] },
+          "meta": { "bsonType": ["object", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "projects": {
+      "options": { "validatorLevel": "strict" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["code", "title", "status", "start_date", "created_at"],
+        "properties": {
+          "code": { "bsonType": "string", "description": "Unique project code" },
+          "title": { "bsonType": "string" },
+          "description": { "bsonType": ["string", "null"] },
+          "status": { "enum": ["planned", "in_progress", "on_hold", "completed", "cancelled"] },
+          "start_date": { "bsonType": "date" },
+          "end_date": { "bsonType": ["date", "null"] },
+          "budget": { "bsonType": ["double", "int", "decimal", "null"] },
+          "location": {
+            "bsonType": ["object", "null"],
+            "properties": {
+              "type": { "enum": ["Point"] },
+              "coordinates": { "bsonType": "array", "items": { "bsonType": "double" }, "minItems": 2, "maxItems": 2 }
+            }
+          },
+          "address": { "bsonType": ["string", "null"] },
+          "district": { "bsonType": ["string", "null"] },
+          "created_by": { "bsonType": ["objectId", "null"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "tenders": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "tender_no", "status", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "tender_no": { "bsonType": "string" },
+          "description": { "bsonType": ["string", "null"] },
+          "published_date": { "bsonType": ["date", "null"] },
+          "status": { "enum": ["draft", "published", "awarded", "cancelled"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "contractors": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["name", "gstin", "created_at"],
+        "properties": {
+          "name": { "bsonType": "string" },
+          "gstin": { "bsonType": "string" },
+          "email": { "bsonType": ["string", "null"] },
+          "phone": { "bsonType": ["string", "null"] },
+          "address": { "bsonType": ["string", "null"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "funds": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "amount", "source", "released_date", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "amount": { "bsonType": ["double", "int", "decimal"] },
+          "source": { "bsonType": "string" },
+          "released_date": { "bsonType": "date" },
+          "remarks": { "bsonType": ["string", "null"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "milestones": {
+      "options": { "validatorLevel": "strict" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "title", "weightage", "status", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "title": { "bsonType": "string" },
+          "description": { "bsonType": ["string", "null"] },
+          "weightage": { "bsonType": ["int", "double", "decimal"] },
+          "due_date": { "bsonType": ["date", "null"] },
+          "status": { "enum": ["not_started", "in_progress", "completed", "delayed"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "progress_updates": {
+      "options": { "validatorLevel": "strict" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "progress_percent", "reported_at", "created_by", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "milestone_id": { "bsonType": ["objectId", "null"] },
+          "progress_percent": { "bsonType": ["int", "double", "decimal"] },
+          "notes": { "bsonType": ["string", "null"] },
+          "images": {
+            "bsonType": ["array", "null"],
+            "items": {
+              "bsonType": "object",
+              "required": ["file_name", "content_type", "size_bytes"],
+              "properties": {
+                "file_name": { "bsonType": "string" },
+                "content_type": { "bsonType": "string" },
+                "size_bytes": { "bsonType": ["int", "long"] },
+                "width": { "bsonType": ["int", "null"] },
+                "height": { "bsonType": ["int", "null"] },
+                "checksum": { "bsonType": ["string", "null"] },
+                "storage_path": { "bsonType": ["string", "null"] }
+              }
+            }
+          },
+          "location": {
+            "bsonType": ["object", "null"],
+            "properties": {
+              "type": { "enum": ["Point"] },
+              "coordinates": { "bsonType": "array", "items": { "bsonType": "double" }, "minItems": 2, "maxItems": 2 }
+            }
+          },
+          "reported_at": { "bsonType": "date" },
+          "created_by": { "bsonType": "objectId" },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "inspections": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "inspected_by", "inspected_at", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "inspected_by": { "bsonType": "objectId" },
+          "remarks": { "bsonType": ["string", "null"] },
+          "rating": { "bsonType": ["int", "double", "null"] },
+          "inspected_at": { "bsonType": "date" },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "handovers": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "handover_date", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "handover_date": { "bsonType": "date" },
+          "recipient": { "bsonType": ["string", "null"] },
+          "notes": { "bsonType": ["string", "null"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "payments": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "contractor_id", "amount", "status", "paid_at", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "contractor_id": { "bsonType": "objectId" },
+          "amount": { "bsonType": ["double", "int", "decimal"] },
+          "status": { "enum": ["pending", "approved", "rejected", "paid"] },
+          "paid_at": { "bsonType": ["date", "null"] },
+          "invoice_no": { "bsonType": ["string", "null"] },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": ["date", "null"] }
+        }
+      }
+    },
+    "reports": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["project_id", "type", "generated_at", "created_at"],
+        "properties": {
+          "project_id": { "bsonType": "objectId" },
+          "type": { "bsonType": "string" },
+          "filters": { "bsonType": ["object", "null"] },
+          "generated_at": { "bsonType": "date" },
+          "generated_by": { "bsonType": ["objectId", "null"] },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "audit_logs": {
+      "options": { "validatorLevel": "moderate" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["action", "entity", "entity_id", "performed_by", "performed_at"],
+        "properties": {
+          "action": { "bsonType": "string" },
+          "entity": { "bsonType": "string" },
+          "entity_id": { "bsonType": ["objectId", "string"] },
+          "diff": { "bsonType": ["object", "null"] },
+          "performed_by": { "bsonType": "objectId" },
+          "performed_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "sessions": {
+      "options": { "validatorLevel": "strict" },
+      "validator": {
+        "bsonType": "object",
+        "required": ["user_id", "refresh_token", "ip", "user_agent", "expires_at", "created_at"],
+        "properties": {
+          "user_id": { "bsonType": "objectId" },
+          "refresh_token": { "bsonType": "string" },
+          "ip": { "bsonType": ["string", "null"] },
+          "user_agent": { "bsonType": ["string", "null"] },
+          "revoked_at": { "bsonType": ["date", "null"] },
+          "expires_at": { "bsonType": "date" },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    }
+  }
+}

@@ -27,7 +27,7 @@ else
   sudo rm -f /tmp/mongodb-*.sock 2>/dev/null
 
   echo "Starting MongoDB server on port ${DB_PORT}..."
-  nohup sudo mongod --dbpath /var/lib/mongodb --port ${DB_PORT} --bind_ip 127.0.0.1 --unixSocketPrefix /var/run/mongodb > /var/lib/mongodb/mongod.log 2>&1 &
+  nohup sudo mongod --dbpath /var/lib/mongodb --port ${DB_PORT} --bind_ip 0.0.0.0 --unixSocketPrefix /var/run/mongodb > /var/lib/mongodb/mongod.log 2>&1 &
   echo "Waiting for MongoDB to start..."
   for i in {1..20}; do
     if mongosh --port ${DB_PORT} --eval "db.adminCommand('ping')" > /dev/null 2>&1; then

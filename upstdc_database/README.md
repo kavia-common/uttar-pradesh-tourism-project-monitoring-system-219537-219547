@@ -12,13 +12,25 @@ Environment variables
 
 Startup
 - Run upstdc_database/startup.sh. It will:
-  - Ensure MongoDB service is running on the configured port
+  - Ensure MongoDB service is running on the configured port (default 5000) and binds to 0.0.0.0 for previews
   - Ensure admin user and app user exist
   - Apply collection JSON Schema validators from schema/collections.json
   - Apply indexes from schema/indexes.js
   - Seed base data from seed/seed_data.js
   - Write connection helper: db_connection.txt
   - Write db_visualizer/mongodb.env with MONGODB_URL and MONGODB_DB
+
+Preview (HTTP)
+- A lightweight database visualizer Node app is provided under db_visualizer.
+- It now listens on port 3020 and binds to 0.0.0.0 to work with preview routing.
+- Ensure MongoDB_URL and MONGODB_DB are present in db_visualizer/mongodb.env (startup.sh writes this).
+- Start the visualizer from the repo root or its directory:
+  - cd upstdc_database/db_visualizer && npm install && npm run start
+- Access:
+  - Databases list: GET /api/databases
+  - Mongo collections: GET /api/mongodb/tables
+  - Sample data: GET /api/mongodb/tables/<collection>/data?limit=50
+  - Status: GET /api/v1/db/status (returns { ok: true, details: { mongodb: { ok: true }}} on success)
 
 Collections (summary)
 - roles

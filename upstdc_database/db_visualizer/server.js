@@ -315,6 +315,41 @@ app.get('/api/databases', async (req, res) => {
   res.json(available);
 });
 
+// PUBLIC_INTERFACE
+// /api/v1/db/status
+// Returns quick connectivity status for configured databases (especially MongoDB).
+// Response:
+//   200 JSON: { ok: true, databases: [...], details: { mongodb: { ok: true|false, error?: string } } }
+//   500 JSON on unexpected failure
+app.get('/api/v1/db/status', async (req, res) => {
+  try {
+    const available = await testConnections();
+
+    // Specifically test MongoDB for detailed status
+    let mongoDetail = { ok: false };
+    if (adapters.mongodb) {
+      try {
+        await adapters.mongodb.testConnection();
+        mongoDetail.ok = true;
+      } catch (err) {
+        mongoDetail = { ok: false, error: err.message };
+      }
+    } else {
+      mongoDetail = { ok: false, error: 'mongodb not configured' };
+    }
+
+    res.json({
+      ok: true,
+      databases: available,
+      details: {
+        mongodb: mongoDetail
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/:db/tables', (req, res) => 
   handleApiRequest(req, res, adapter => adapter.getTables())
 );
@@ -338,9 +373,10 @@ const envInfo = {
   MongoDB: 'MONGODB_URL, MONGODB_DB'
 };
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Database viewer running on http://localhost:${PORT}`);
+const PORT = parseInt(process.env.PORT, 10) || 3020;
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`Database viewer running on http://${HOST}:${PORT}`);
   console.log('\nEnvironment variables expected:');
   Object.entries(envInfo).forEach(([db, vars]) => {
     console.log(`${db}: ${vars}`);

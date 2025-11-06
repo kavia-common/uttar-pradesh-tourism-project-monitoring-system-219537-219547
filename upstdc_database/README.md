@@ -12,7 +12,7 @@ Environment variables
 
 Startup
 - Run upstdc_database/startup.sh. It will:
-  - Ensure MongoDB service is running on the configured port (default 5000) and binds to 0.0.0.0 for previews
+  - Ensure MongoDB service is running on the configured port (default 3020) and binds to 0.0.0.0 for previews
   - Ensure admin user and app user exist
   - Apply collection JSON Schema validators from schema/collections.json
   - Apply indexes from schema/indexes.js

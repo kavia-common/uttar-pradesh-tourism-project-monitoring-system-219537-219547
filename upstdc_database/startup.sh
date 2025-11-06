@@ -26,14 +26,15 @@ sudo chown -R "$(id -u)":"$(id -g)" "${DBPATH}" "${LOGDIR}" "${SOCKDIR}" || true
 sudo chmod 700 "${DBPATH}" || true
 touch "${LOGDIR}/mongod.log" || true
 
-# Helper: wait for mongod readiness with backoff
+# Helper: wait for mongod readiness with backoff (TCP-only)
+# Uses bash /dev/tcp to avoid dependency on mongosh/auth for readiness.
 wait_for_mongo() {
   local attempts=${1:-60}
   local delay=${2:-1}
   local i=1
   while [ $i -le $attempts ]; do
-    if mongosh --host 127.0.0.1 --port "${DB_PORT}" --eval "db.adminCommand('ping')" >/dev/null 2>&1; then
-      echo "MongoDB is ready (127.0.0.1:${DB_PORT})"
+    if bash -c ">/dev/tcp/127.0.0.1/${DB_PORT}" >/dev/null 2>&1; then
+      echo "MongoDB TCP port is open (127.0.0.1:${DB_PORT})"
       return 0
     fi
     sleep "$delay"
@@ -42,9 +43,9 @@ wait_for_mongo() {
   return 1
 }
 
-# If MongoDB already running on desired port, skip starting but proceed to schema/index/seed
-if mongosh --host 127.0.0.1 --port "${DB_PORT}" --eval "db.adminCommand('ping')" > /dev/null 2>&1; then
-  echo "MongoDB is already running on port ${DB_PORT}"
+# If MongoDB already running on desired port (TCP open), skip starting but proceed to schema/index/seed
+if bash -c ">/dev/tcp/127.0.0.1/${DB_PORT}" >/dev/null 2>&1; then
+  echo "MongoDB TCP port already open on ${DB_PORT}"
 else
   # If mongod is running on another port, stop it (best effort)
   if pgrep -x mongod > /dev/null; then
@@ -64,7 +65,7 @@ else
     --unixSocketPrefix "${SOCKDIR}" \
     > "${LOGDIR}/mongod.log" 2>&1 &
   
-  echo "Waiting for MongoDB to start (healthcheck via mongosh ping)..."
+  echo "Waiting for MongoDB to start (TCP readiness on 127.0.0.1:${DB_PORT})..."
   if ! wait_for_mongo 60 1; then
     echo "ERROR: MongoDB did not become ready on 127.0.0.1:${DB_PORT}"
     echo "Last 100 log lines:"
@@ -73,11 +74,11 @@ else
   fi
 fi
 
-# Healthcheck (non-fatal here): demonstrate readiness for CI/preview
-if mongosh --host 127.0.0.1 --port "${DB_PORT}" --eval "db.adminCommand('ping')" > /dev/null 2>&1; then
-  echo "Healthcheck OK: mongosh ping succeeded on 127.0.0.1:${DB_PORT}"
+# Healthcheck (non-fatal here): TCP-only readiness for CI/preview
+if bash -c ">/dev/tcp/127.0.0.1/${DB_PORT}" >/dev/null 2>&1; then
+  echo "Healthcheck OK: TCP port open on 127.0.0.1:${DB_PORT}"
 else
-  echo "WARN: Healthcheck ping failed unexpectedly (will continue due to idempotent init)."
+  echo "WARN: TCP readiness check failed unexpectedly (will continue due to idempotent init)."
 fi
 
 # Create admin and app user idempotently (retry-safe)
@@ -181,4 +182,4 @@ echo "=== UPSTDC MongoDB setup complete ==="
 echo "DB: ${DB_NAME} | Port: ${DB_PORT}"
 echo "Admin user: ${DB_USER} / ${DB_PASSWORD}"
 echo "App user: appuser / ${DB_PASSWORD}"
-echo "Healthcheck example: mongosh --host 127.0.0.1 --port ${DB_PORT} --eval \"db.adminCommand('ping')\""
+echo "TCP readiness example: bash -c \">/dev/tcp/127.0.0.1/${DB_PORT}\" && echo ready || echo not-ready"

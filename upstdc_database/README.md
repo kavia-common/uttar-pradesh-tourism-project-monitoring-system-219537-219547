@@ -12,11 +12,13 @@ Environment variables
 
 Startup
 - Run upstdc_database/startup.sh. It will:
-  - Ensure MongoDB service is running on the configured port (default 3020) and binds to 0.0.0.0 for previews
+  - Ensure MongoDB service is running on the configured port (default 27017) and binds to 0.0.0.0 for previews
+  - Readiness uses a TCP-only probe to 127.0.0.1:27017 (no mongosh or auth required)
   - Ensure admin user and app user exist
   - Apply collection JSON Schema validators from schema/collections.json
   - Apply indexes from schema/indexes.js
   - Seed base data from seed/seed_data.js
+  - Readiness does NOT depend on validators/indexes/seed; these run after TCP is ready
   - Write connection helper: db_connection.txt
   - Write db_visualizer/mongodb.env with MONGODB_URL and MONGODB_DB
 
@@ -87,6 +89,9 @@ Relationships (logical)
 - audit_logs.performed_by -> users._id
 
 Operational notes
+- Readiness: TCP-only check to 127.0.0.1:27017; no mongosh/auth is needed for readiness.
+- mongod binding: server listens on 0.0.0.0:27017 to support preview routing.
+- Initialization (validators, indexes, seed) runs after TCP readiness and does not block readiness.
 - Scripts are idempotent; safe to re-run startup.sh.
 - Do not hardcode secrets in code. Provide:
   - MONGODB_URL

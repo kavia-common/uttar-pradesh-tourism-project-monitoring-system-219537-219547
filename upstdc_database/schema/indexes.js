@@ -10,7 +10,9 @@ async function applyIndexes(db) {
     try {
       // In mongosh, prefer db.getCollection('name') then call createIndex
       const name = await db.getCollection(coll).createIndex(keys, { background: true, ...options });
-      print(`✓ Index ensured on ${coll}: ${tojson(keys)} ${tojson(options)} (${name})`);
+      // mongosh doesn't define tojson; use printjson for objects and print for scalars
+      print(`✓ Index ensured on ${coll}:`);
+      printjson({ keys, options: { background: true, ...options }, name });
     } catch (e) {
       print(`✗ Failed to create index on ${coll}: ${e.message}`);
     }

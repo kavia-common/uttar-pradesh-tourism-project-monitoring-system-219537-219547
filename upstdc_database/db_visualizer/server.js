@@ -321,6 +321,12 @@ app.get('/api/databases', async (req, res) => {
 // Response:
 //   200 JSON: { ok: true, databases: [...], details: { mongodb: { ok: true|false, error?: string } } }
 //   500 JSON on unexpected failure
+/**
+ * PUBLIC_INTERFACE
+ * /api/v1/db/status
+ * Returns connectivity status for configured databases (esp. MongoDB).
+ * GET -> 200 { ok: true, databases: [..], details: { mongodb: { ok, error? } } }
+ */
 app.get('/api/v1/db/status', async (req, res) => {
   try {
     const available = await testConnections();

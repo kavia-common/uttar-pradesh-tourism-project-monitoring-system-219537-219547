@@ -4,14 +4,14 @@
 # Applies JSON schema validation, indexes, and seed data idempotently.
 # Notes:
 # - We intentionally do NOT exit on benign warnings from validators/indexes/seed to keep CI green.
-# - Port consistency: defaults to 3020 (matches db_connection.txt and db_visualizer configs).
+# - Port consistency: defaults to 27017 (standard MongoDB port).
 set -euo pipefail
 
 # ENV with defaults (can be overridden by .env or environment)
 DB_NAME="${MONGODB_DB:-myapp}"
 DB_USER="${MONGODB_ADMIN_USER:-appuser}"
 DB_PASSWORD="${MONGODB_ADMIN_PASSWORD:-dbuser123}"
-DB_PORT="${MONGODB_PORT:-3020}"
+DB_PORT="${MONGODB_PORT:-27017}"
 
 echo "=== UPSTDC MongoDB setup start ==="
 echo "Target DB: ${DB_NAME} on port ${DB_PORT}"

@@ -6,7 +6,7 @@
 DB_NAME="myapp"
 DB_USER="appuser"
 DB_PASSWORD="dbuser123"
-DB_PORT="3020"
+DB_PORT="27017"
 
 # SQLite restore
 if [ -f "database_backup.db" ]; then

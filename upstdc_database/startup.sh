@@ -93,9 +93,21 @@ function applyValidator(collName, validator, options = {}) {
   }
 }
 
-const spec = JSON.parse(cat("schema/collections.json"));
-const entries = Object.entries(spec.collections || {});
-for (const [name, def] of entries) {
+const specRaw = cat("schema/collections.json");
+let spec = {};
+try {
+  spec = JSON.parse(specRaw);
+} catch (e) {
+  print("✗ Failed to parse collections.json: " + e.message);
+  spec = {};
+}
+
+const collSpec = (spec && typeof spec === 'object' && spec.collections && typeof spec.collections === 'object') ? spec.collections : {};
+for (const [name, def] of Object.entries(collSpec)) {
+  if (!def || !def.validator) {
+    print("• Skipping collection without validator spec: " + name);
+    continue;
+  }
   applyValidator(name, def.validator, def.options || {});
 }
 print("Validators applied");

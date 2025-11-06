@@ -8,7 +8,8 @@ async function applyIndexes(db) {
   // Helper to create index safely
   async function ensureIndex(coll, keys, options = {}) {
     try {
-      const name = await db.collection(coll).createIndex(keys, { background: true, ...options });
+      // In mongosh, prefer db.getCollection('name') then call createIndex
+      const name = await db.getCollection(coll).createIndex(keys, { background: true, ...options });
       print(`✓ Index ensured on ${coll}: ${tojson(keys)} ${tojson(options)} (${name})`);
     } catch (e) {
       print(`✗ Failed to create index on ${coll}: ${e.message}`);

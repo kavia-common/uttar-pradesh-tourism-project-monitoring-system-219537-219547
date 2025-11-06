@@ -6,7 +6,7 @@
  */
 async function seedDatabase(db) {
   // Roles
-  const rolesColl = db.collection("roles");
+  const rolesColl = db.getCollection("roles");
   const now = new Date();
 
   const baseRoles = [
@@ -49,7 +49,7 @@ async function seedDatabase(db) {
   }
 
   // Admin user
-  const usersColl = db.collection("users");
+  const usersColl = db.getCollection("users");
   const adminRole = await rolesColl.findOne({ name: "admin" });
 
   // NOTE: password is a placeholder; backend should manage hashing during real user creation.
@@ -75,7 +75,7 @@ async function seedDatabase(db) {
   }
 
   // Sample projects
-  const projectsColl = db.collection("projects");
+  const projectsColl = db.getCollection("projects");
   const sampleProjects = [
     {
       code: "PMS-UP-001",
